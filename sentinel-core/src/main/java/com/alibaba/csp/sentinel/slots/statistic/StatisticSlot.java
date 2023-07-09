@@ -56,10 +56,13 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
                       boolean prioritized, Object... args) throws Throwable {
         try {
             // Do some checking.
+            // 1. 做一些检查，执行AuthoritySlot、SystemSlot、FlowSlot、DefaultCircuitBreakerSlot方法
+            // 如果规则不通过，就会抛出BlockException异常。反之，会在node中统计通过的请求数和线程数等信息。
             fireEntry(context, resourceWrapper, node, count, prioritized, args);
 
             // Request passed, add thread count and pass count.
             node.increaseThreadNum();
+            // 2. 记录通过规则的请求
             node.addPassRequest(count);
 
             if (context.getCurEntry().getOriginNode() != null) {

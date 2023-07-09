@@ -129,10 +129,12 @@ public class CtSph implements Sph {
         }
 
         // Global switch is close, no rule checking will do.
+        // 1. 全局开关关闭，说明没有规则检查，直接返回一个CtEntry对象，不再进行后续的限流检测
         if (!Constants.ON) {
             return new CtEntry(resourceWrapper, null, context);
         }
 
+        // 2. 根据包装过的资源获取对应的SlotChain
         ProcessorSlot<Object> chain = lookProcessChain(resourceWrapper);
 
         /*
@@ -145,9 +147,11 @@ public class CtSph implements Sph {
 
         Entry e = new CtEntry(resourceWrapper, chain, context, count, args);
         try {
+            // 3. 执行SlotChain的entry方法，如果SlotChain的entry方法抛出了BlockException，则将该异常继续向上抛出，如果SlotChain的entry方法正常执行了，则最后会将该entry对象返回
             chain.entry(context, resourceWrapper, null, count, prioritized, args);
         } catch (BlockException e1) {
             e.exit(count, args);
+            // 4. 如果上层方法捕获了BlockException，则说明请求被限流了，否则请求能正常执行
             throw e1;
         } catch (Throwable e1) {
             // This should not happen, unless there are errors existing in Sentinel internal.
@@ -192,6 +196,10 @@ public class CtSph implements Sph {
      * @return {@link ProcessorSlotChain} of the resource
      */
     ProcessorSlot<Object> lookProcessChain(ResourceWrapper resourceWrapper) {
+        // 这里使用两次判断为null(双重检查锁或缓存机制)的原因如下：
+        // 假设有两个线程A，B同时到达第一个if，都为null，此时A线程进入synchronized
+        // 遇到第二个if，当然还是null，A线程就会执行第二个if里面的语句，创建一个chain，然后存到缓存中，退出synchronized
+        // B线程进入synchronized，获取chain，但此时缓存命中，就不用再执行第二个if里面的语句了，减少了synchronized锁的时间
         ProcessorSlotChain chain = chainMap.get(resourceWrapper);
         if (chain == null) {
             synchronized (LOCK) {

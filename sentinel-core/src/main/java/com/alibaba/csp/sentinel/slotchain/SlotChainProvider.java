@@ -41,6 +41,7 @@ public final class SlotChainProvider {
         }
 
         // Resolve the slot chain builder SPI.
+        // 从com.alibaba.csp.sentinel.slotchain.ProcessorSlot文件中读取slot构建slot chain
         slotChainBuilder = SpiLoader.of(SlotChainBuilder.class).loadFirstInstanceOrDefault();
 
         if (slotChainBuilder == null) {
